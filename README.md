@@ -23,6 +23,14 @@ func main() {
 	data := <-tn.Channel
 	fmt.Println(data.(string))
 
+	tn.Close()
+	err := tn.Send("more")
+	if err != nil {
+		fmt.Println("channel is closed!")
+	}
+
+	tn.Wait()
+
 	return
 }
 ```
