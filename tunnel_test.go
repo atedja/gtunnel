@@ -42,10 +42,13 @@ func TestTunnel(t *testing.T) {
 func TestTunnelCorrectBuffer(t *testing.T) {
 	th := NewBuffered(100)
 
-	// writes 200 times to tunnel that only fits 100.
+	// Attempt to write 200 times to tunnel that only fits 100.
 	for i := 0; i < 200; i++ {
 		go th.Send(1)
 	}
+
+	// Let the loop above run for some time
+	time.Sleep(100 * time.Millisecond)
 
 	// Close this tunnel, any further attempt to push should fail.
 	th.Close()
