@@ -113,8 +113,9 @@ func (self *Tunnel) IsFullyClosed() bool {
 }
 
 // Wait until this Tunnel is fully closed.
-// This method is blocking. After this method completes,
-// IsFullyClosed() will always return true, and length of channel equals to 0.
+// This method is blocking until all contents are flushed out of the channel.
+// After this method completes, IsFullyClosed() will always return true, and
+// length of channel equals to 0.
 //
 func (self *Tunnel) Wait() {
 	self.mutex.Lock()
