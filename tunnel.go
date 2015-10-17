@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	//"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -11,26 +12,27 @@ import (
 // send data into the tunnel are unblocked.
 //
 type Tunnel struct {
+	counter     int64
+	cond        *sync.Cond
 	mutex       *sync.Mutex
 	closed      *atomic.Value
 	fullyClosed *atomic.Value
 	closingDone chan bool
 	channel     chan interface{}
-	internal    chan interface{}
 }
 
 // Creates a new Tunnel with no buffer.
 //
 func NewUnbuffered() *Tunnel {
 	tn := &Tunnel{
+		counter:     0,
+		cond:        &sync.Cond{L: &sync.Mutex{}},
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
 		fullyClosed: &atomic.Value{},
 		closingDone: make(chan bool, 1),
 		channel:     make(chan interface{}),
-		internal:    make(chan interface{}),
 	}
-	go tn.processInternal()
 	return tn
 }
 
@@ -38,34 +40,15 @@ func NewUnbuffered() *Tunnel {
 //
 func NewBuffered(buffer int64) *Tunnel {
 	tn := &Tunnel{
+		counter:     0,
+		cond:        &sync.Cond{L: &sync.Mutex{}},
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
 		fullyClosed: &atomic.Value{},
 		closingDone: make(chan bool, 1),
 		channel:     make(chan interface{}, buffer),
-		internal:    make(chan interface{}),
 	}
-	go tn.processInternal()
 	return tn
-}
-
-func (self *Tunnel) processInternal() {
-InterLoop:
-	for {
-		select {
-		case v, ok := <-self.internal:
-			if !ok {
-				break InterLoop
-			}
-			self.channel <- v
-		default:
-			if self.IsClosed() && len(self.channel) == 0 {
-				break InterLoop
-			}
-		}
-	}
-	close(self.channel)
-	self.closingDone <- true
 }
 
 // Send data into this Tunnel.
@@ -77,7 +60,17 @@ func (self *Tunnel) Send(v interface{}) error {
 		return ErrClosedTunnel
 	}
 
-	self.internal <- v
+	atomic.AddInt64(&self.counter, 1)
+	self.cond.L.Lock()
+	defer func() {
+		atomic.AddInt64(&self.counter, -1)
+		self.cond.L.Unlock()
+		self.cond.Signal()
+	}()
+	if self.IsClosed() {
+		return ErrClosedTunnel
+	}
+	self.channel <- v
 
 	return nil
 }
@@ -133,5 +126,15 @@ func (self *Tunnel) Close() {
 
 	if !self.IsClosed() {
 		self.closed.Store(true)
+		go func() {
+			self.cond.L.Lock()
+			for atomic.LoadInt64(&self.counter) != 0 {
+				self.cond.Wait()
+			}
+			self.cond.L.Unlock()
+			close(self.channel)
+			self.closingDone <- true
+			close(self.closingDone)
+		}()
 	}
 }

@@ -1,18 +1,19 @@
 package tunnel
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
 func TestTunnel(t *testing.T) {
+	fmt.Println("Testing basic case")
 	th := NewBuffered(4)
 	th.Send("yo1")
 	th.Send("yo2")
 	th.Send("yo3")
 	th.Send("yo4")
-	assert.Equal(t, 4, th.Len())
 
 	var data interface{}
 	var ok bool
@@ -34,16 +35,22 @@ func TestTunnel(t *testing.T) {
 
 	th.Close()
 	assert.Equal(t, true, th.IsClosed())
+
+	// Single or multiple waits should work
 	th.Wait()
+	th.Wait()
+	th.Wait()
+
 	assert.Equal(t, true, th.IsFullyClosed())
 	assert.Equal(t, 0, th.Len())
 }
 
 func TestTunnelCorrectBuffer(t *testing.T) {
+	fmt.Println("Testing blocked goroutines")
 	th := NewBuffered(100)
 
-	// Attempt to write 200 times to tunnel that only fits 100.
-	for i := 0; i < 200; i++ {
+	// Attempt to write more times to tunnel that only fits 100.
+	for i := 0; i < 2000; i++ {
 		go th.Send(1)
 	}
 
@@ -75,6 +82,7 @@ func TestTunnelCorrectBuffer(t *testing.T) {
 }
 
 func TestTunnelGoCrazy(t *testing.T) {
+	fmt.Println("Testing lots of goroutines")
 	th := NewUnbuffered()
 
 	// reader
