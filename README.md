@@ -20,7 +20,7 @@ func main() {
 	tn := tunnel.NewTunnel(1)
 	tn.Send("something")
 
-	data := <-tn.Channel
+	data := <-tn.Out()
 	fmt.Println(data.(string))
 
 	tn.Close()
