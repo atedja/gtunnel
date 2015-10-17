@@ -11,44 +11,63 @@ import (
 // send data into the tunnel are unblocked.
 //
 type Tunnel struct {
-	wg          *sync.WaitGroup
 	mutex       *sync.Mutex
 	closed      *atomic.Value
 	fullyClosed *atomic.Value
 	closingDone chan bool
 
-	// The underlying native Go channel.
-	// This is made public only so you can read data from the channel using
-	// the standard Select Statement.
-	// However, you should always use Send() to send data for better control
-	// and throughput.
-	Channel chan interface{}
+	channel  chan interface{}
+	internal chan interface{}
 }
 
 // Creates a new Tunnel with no buffer.
 //
 func NewDefaultTunnel() *Tunnel {
-	return &Tunnel{
-		wg:          &sync.WaitGroup{},
+	tn := &Tunnel{
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
 		fullyClosed: &atomic.Value{},
 		closingDone: make(chan bool, 1),
-		Channel:     make(chan interface{}),
+		channel:     make(chan interface{}),
+		internal:    make(chan interface{}),
 	}
+	go tn.processInternal()
+	return tn
 }
 
 // Creates a new Tunnel with buffer.
 //
 func NewTunnel(buffer int64) *Tunnel {
-	return &Tunnel{
-		wg:          &sync.WaitGroup{},
+	tn := &Tunnel{
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
 		fullyClosed: &atomic.Value{},
 		closingDone: make(chan bool, 1),
-		Channel:     make(chan interface{}, buffer),
+		channel:     make(chan interface{}, buffer),
+		internal:    make(chan interface{}),
 	}
+	go tn.processInternal()
+
+	return tn
+}
+
+func (self *Tunnel) processInternal() {
+InterLoop:
+	for {
+		select {
+		case v, ok := <-self.internal:
+			if !ok {
+				break InterLoop
+			}
+			self.channel <- v
+		default:
+			if self.IsClosed() && len(self.channel) == 0 {
+				break InterLoop
+			}
+		}
+	}
+	close(self.channel)
+	self.closingDone <- true
 }
 
 // Send data into this Tunnel.
@@ -56,13 +75,21 @@ func NewTunnel(buffer int64) *Tunnel {
 // You should always use this to send data to channel.
 //
 func (self *Tunnel) Send(v interface{}) error {
-	if self.IsClosed() == true {
+	if self.IsClosed() {
 		return ErrClosedTunnel
 	}
-	self.wg.Add(1)
-	self.Channel <- v
-	self.wg.Done()
+
+	self.internal <- v
+
 	return nil
+}
+
+func (self *Tunnel) Out() <-chan interface{} {
+	return self.channel
+}
+
+func (self *Tunnel) Len() int {
+	return len(self.channel)
 }
 
 // Check if this Tunnel is closed.
@@ -90,8 +117,13 @@ func (self *Tunnel) IsFullyClosed() bool {
 // IsFullyClosed() will always return true, and length of channel equals to 0.
 //
 func (self *Tunnel) Wait() {
-	<-self.closingDone
-	return
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
+	if !self.IsFullyClosed() {
+		<-self.closingDone
+		self.fullyClosed.Store(true)
+	}
 }
 
 // Close this Tunnel.
@@ -102,11 +134,5 @@ func (self *Tunnel) Close() {
 
 	if !self.IsClosed() {
 		self.closed.Store(true)
-		go func() {
-			self.wg.Wait()
-			close(self.Channel)
-			self.fullyClosed.Store(true)
-			self.closingDone <- true
-		}()
 	}
 }

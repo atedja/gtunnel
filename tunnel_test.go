@@ -12,22 +12,23 @@ func TestTunnel(t *testing.T) {
 	th.Send("yo2")
 	th.Send("yo3")
 	th.Send("yo4")
+	assert.Equal(t, 4, th.Len())
 
 	var data interface{}
 	var ok bool
-	data, ok = <-th.Channel
+	data, ok = <-th.Out()
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "yo1", data.(string))
 
-	data, ok = <-th.Channel
+	data, ok = <-th.Out()
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "yo2", data.(string))
 
-	data, ok = <-th.Channel
+	data, ok = <-th.Out()
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "yo3", data.(string))
 
-	data, ok = <-th.Channel
+	data, ok = <-th.Out()
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "yo4", data.(string))
 
@@ -35,7 +36,7 @@ func TestTunnel(t *testing.T) {
 	assert.Equal(t, true, th.IsClosed())
 	th.Wait()
 	assert.Equal(t, true, th.IsFullyClosed())
-	assert.Equal(t, 0, len(th.Channel))
+	assert.Equal(t, 0, th.Len())
 }
 
 func TestTunnelCorrectBuffer(t *testing.T) {
@@ -46,16 +47,12 @@ func TestTunnelCorrectBuffer(t *testing.T) {
 	go func() {
 		for i := 0; i < 200; i++ {
 			go func() {
-				err := th.Send(1)
-				assert.Nil(t, err)
+				th.Send(1)
 			}()
 		}
 		writeDone <- true
 	}()
 	<-writeDone
-
-	// We now have 100 in the buffer, and another 100 goroutines running amok
-	assert.Equal(t, 100, len(th.Channel))
 
 	// Close this tunnel, any further attempt to push should fail
 	th.Close()
@@ -67,12 +64,9 @@ func TestTunnelCorrectBuffer(t *testing.T) {
 	// Flush them out, there should be 200 of them
 	go func() {
 		counter := 0
-		ok := true
-		for ok {
-			_, ok = <-th.Channel
-			if ok {
-				counter++
-			}
+		for c := range th.Out() {
+			assert.Equal(t, 1, c.(int))
+			counter++
 		}
 		assert.Equal(t, 200, counter)
 	}()
@@ -80,10 +74,10 @@ func TestTunnelCorrectBuffer(t *testing.T) {
 	// Wait() will automatically unblock once flushing completes.
 	th.Wait()
 	assert.Equal(t, true, th.IsFullyClosed())
-	assert.Equal(t, 0, len(th.Channel))
+	assert.Equal(t, 0, th.Len())
 
 	// Further attempt at reading will fail
-	_, ok := <-th.Channel
+	_, ok := <-th.Out()
 	assert.Equal(t, false, ok)
 }
 
@@ -96,7 +90,7 @@ func TestTunnelGoCrazy(t *testing.T) {
 	MainLoop:
 		for {
 			select {
-			case _, ok := <-th.Channel:
+			case _, ok := <-th.Out():
 				if !ok {
 					break MainLoop
 				}
@@ -121,13 +115,13 @@ func TestTunnelGoCrazy(t *testing.T) {
 	}()
 
 	// Wait to make reader and writer go crazy
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	th.Close()
 	assert.Equal(t, true, th.IsClosed())
 	th.Wait()
 	assert.Equal(t, true, th.IsFullyClosed())
-	assert.Equal(t, 0, len(th.Channel))
+	assert.Equal(t, 0, th.Len())
 
 	<-readerDone
 	<-writerDone
