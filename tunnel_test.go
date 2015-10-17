@@ -7,7 +7,7 @@ import (
 )
 
 func TestTunnel(t *testing.T) {
-	th := NewTunnel(4)
+	th := NewBuffered(4)
 	th.Send("yo1")
 	th.Send("yo2")
 	th.Send("yo3")
@@ -40,14 +40,14 @@ func TestTunnel(t *testing.T) {
 }
 
 func TestTunnelCorrectBuffer(t *testing.T) {
-	th := NewTunnel(100)
+	th := NewBuffered(100)
 
-	// writes 200 times to tunnel that only fits 100
+	// writes 200 times to tunnel that only fits 100.
 	for i := 0; i < 200; i++ {
 		go th.Send(1)
 	}
 
-	// Close this tunnel, any further attempt to push should fail
+	// Close this tunnel, any further attempt to push should fail.
 	th.Close()
 	assert.Equal(t, true, th.IsClosed())
 	err := th.Send(1)
@@ -72,7 +72,7 @@ func TestTunnelCorrectBuffer(t *testing.T) {
 }
 
 func TestTunnelGoCrazy(t *testing.T) {
-	th := NewDefaultTunnel()
+	th := NewUnbuffered()
 
 	// reader
 	readerDone := make(chan bool)
@@ -97,9 +97,7 @@ func TestTunnelGoCrazy(t *testing.T) {
 				break
 			}
 
-			go func() {
-				th.Send(1)
-			}()
+			go th.Send(1)
 		}
 		writerDone <- true
 	}()

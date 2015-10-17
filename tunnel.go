@@ -15,14 +15,13 @@ type Tunnel struct {
 	closed      *atomic.Value
 	fullyClosed *atomic.Value
 	closingDone chan bool
-
-	channel  chan interface{}
-	internal chan interface{}
+	channel     chan interface{}
+	internal    chan interface{}
 }
 
 // Creates a new Tunnel with no buffer.
 //
-func NewDefaultTunnel() *Tunnel {
+func NewUnbuffered() *Tunnel {
 	tn := &Tunnel{
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
@@ -37,7 +36,7 @@ func NewDefaultTunnel() *Tunnel {
 
 // Creates a new Tunnel with buffer.
 //
-func NewTunnel(buffer int64) *Tunnel {
+func NewBuffered(buffer int64) *Tunnel {
 	tn := &Tunnel{
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
@@ -47,7 +46,6 @@ func NewTunnel(buffer int64) *Tunnel {
 		internal:    make(chan interface{}),
 	}
 	go tn.processInternal()
-
 	return tn
 }
 
@@ -71,7 +69,7 @@ InterLoop:
 }
 
 // Send data into this Tunnel.
-// Will yield error if channel is closed.
+// Will yield error if channel is closed rather than panics.
 // You should always use this to send data to channel.
 //
 func (self *Tunnel) Send(v interface{}) error {
