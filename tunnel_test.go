@@ -92,11 +92,7 @@ func TestTunnelGoCrazy(t *testing.T) {
 	// writer
 	writerDone := make(chan bool)
 	go func() {
-		for {
-			if th.IsClosed() {
-				break
-			}
-
+		for !th.IsClosed() {
 			go th.Send(1)
 		}
 		writerDone <- true
