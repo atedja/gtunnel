@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestTunnel(t *testing.T) {
+func TestTunnelBasicCase(t *testing.T) {
 	fmt.Println("Testing basic case")
 	th := NewBuffered(4)
 	th.Send("yo1")
@@ -45,11 +45,11 @@ func TestTunnel(t *testing.T) {
 	assert.Equal(t, 0, th.Len())
 }
 
-func TestTunnelCorrectBuffer(t *testing.T) {
-	fmt.Println("Testing blocked goroutines")
+func TestTunnelBufferOverflow(t *testing.T) {
+	fmt.Println("Testing more data into channel")
 	th := NewBuffered(100)
 
-	// Attempt to write more times to tunnel that only fits 100.
+	// Attempt to write more than the tunnel can handle.
 	for i := 0; i < 2000; i++ {
 		go th.Send(1)
 	}
@@ -81,21 +81,15 @@ func TestTunnelCorrectBuffer(t *testing.T) {
 	assert.Equal(t, false, ok)
 }
 
-func TestTunnelGoCrazy(t *testing.T) {
-	fmt.Println("Testing lots of goroutines")
+func TestTunnelGoCrazyUnbuffered(t *testing.T) {
+	fmt.Println("Testing lots of goroutines with unbuffered tunnel")
 	th := NewUnbuffered()
 
 	// reader
 	readerDone := make(chan bool)
 	go func() {
-	MainLoop:
-		for {
-			select {
-			case _, ok := <-th.Out():
-				if !ok {
-					break MainLoop
-				}
-			}
+		for c := range th.Out() {
+			assert.Equal(t, "data", c.(string))
 		}
 		readerDone <- true
 	}()
@@ -104,7 +98,42 @@ func TestTunnelGoCrazy(t *testing.T) {
 	writerDone := make(chan bool)
 	go func() {
 		for !th.IsClosed() {
-			go th.Send(1)
+			go th.Send("data")
+		}
+		writerDone <- true
+	}()
+
+	// Wait to make reader and writer go crazy
+	time.Sleep(1000 * time.Millisecond)
+
+	th.Close()
+	assert.Equal(t, true, th.IsClosed())
+	th.Wait()
+	assert.Equal(t, true, th.IsFullyClosed())
+	assert.Equal(t, 0, th.Len())
+
+	<-readerDone
+	<-writerDone
+}
+
+func TestTunnelGoCrazyBuffered(t *testing.T) {
+	fmt.Println("Testing lots of goroutines with buffered tunnel")
+	th := NewBuffered(100)
+
+	// reader
+	readerDone := make(chan bool)
+	go func() {
+		for c := range th.Out() {
+			assert.Equal(t, "data", c.(string))
+		}
+		readerDone <- true
+	}()
+
+	// writer
+	writerDone := make(chan bool)
+	go func() {
+		for !th.IsClosed() {
+			go th.Send("data")
 		}
 		writerDone <- true
 	}()
