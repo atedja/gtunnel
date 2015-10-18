@@ -1,7 +1,6 @@
 package tunnel
 
 import (
-	//"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -12,41 +11,38 @@ import (
 // send data into the tunnel are unblocked.
 //
 type Tunnel struct {
-	counter     int64
-	cond        *sync.Cond
 	mutex       *sync.Mutex
 	closed      *atomic.Value
 	fullyClosed *atomic.Value
 	closingDone chan bool
 	channel     chan interface{}
+	semaphore   *Semaphore
 }
 
 // Creates a new Tunnel with no buffer.
 //
 func NewUnbuffered() *Tunnel {
 	tn := &Tunnel{
-		counter:     0,
-		cond:        &sync.Cond{L: &sync.Mutex{}},
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
 		fullyClosed: &atomic.Value{},
 		closingDone: make(chan bool, 1),
 		channel:     make(chan interface{}),
+		semaphore:   NewSemaphore(1),
 	}
 	return tn
 }
 
 // Creates a new Tunnel with buffer.
 //
-func NewBuffered(buffer int64) *Tunnel {
+func NewBuffered(buffer int) *Tunnel {
 	tn := &Tunnel{
-		counter:     0,
-		cond:        &sync.Cond{L: &sync.Mutex{}},
 		mutex:       &sync.Mutex{},
 		closed:      &atomic.Value{},
 		fullyClosed: &atomic.Value{},
 		closingDone: make(chan bool, 1),
 		channel:     make(chan interface{}, buffer),
+		semaphore:   NewSemaphore(buffer),
 	}
 	return tn
 }
@@ -56,20 +52,11 @@ func NewBuffered(buffer int64) *Tunnel {
 // You should always use this to send data to channel.
 //
 func (self *Tunnel) Send(v interface{}) error {
-	if self.IsClosed() {
+	if self.semaphore.Acquire() != nil {
 		return ErrClosedTunnel
 	}
+	defer self.semaphore.Release()
 
-	atomic.AddInt64(&self.counter, 1)
-	self.cond.L.Lock()
-	defer func() {
-		atomic.AddInt64(&self.counter, -1)
-		self.cond.L.Unlock()
-		self.cond.Signal()
-	}()
-	if self.IsClosed() {
-		return ErrClosedTunnel
-	}
 	self.channel <- v
 
 	return nil
@@ -127,11 +114,8 @@ func (self *Tunnel) Close() {
 	if !self.IsClosed() {
 		self.closed.Store(true)
 		go func() {
-			self.cond.L.Lock()
-			for atomic.LoadInt64(&self.counter) != 0 {
-				self.cond.Wait()
-			}
-			self.cond.L.Unlock()
+			self.semaphore.Close()
+			self.semaphore.Wait()
 			close(self.channel)
 			self.closingDone <- true
 			close(self.closingDone)
