@@ -13,7 +13,7 @@ import (
 // thread scheduling.
 // However, once Close() returns, all future calls to Acquire() is guaranteed
 // to fail.
-
+//
 type Semaphore struct {
 	sync.Mutex
 	cond       *sync.Cond
