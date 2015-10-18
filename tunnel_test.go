@@ -38,7 +38,6 @@ func TestTunnelBasicCase(t *testing.T) {
 	th.Close()
 	th.Close()
 
-	// Single or multiple waits should work
 	th.Wait()
 	th.Wait()
 	th.Wait()

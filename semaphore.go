@@ -70,7 +70,7 @@ func (self *Semaphore) Release() {
 
 // Count the number of reclaimed resources
 //
-func (self *Semaphore) Count() int {
+func (self *Semaphore) count() int {
 	self.Lock()
 	defer self.Unlock()
 	return self.notUsed + self.returned
@@ -80,7 +80,7 @@ func (self *Semaphore) Count() int {
 //
 func (self *Semaphore) Wait() {
 	self.cond.L.Lock()
-	for self.Count() < self.bufferSize {
+	for self.count() < self.bufferSize {
 		self.cond.Wait()
 	}
 	self.cond.L.Unlock()

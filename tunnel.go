@@ -11,7 +11,6 @@ import (
 // send data into the tunnel are unblocked.
 //
 type Tunnel struct {
-	mutex       *sync.Mutex
 	coffee      *sync.Once
 	closed      *atomic.Value
 	closingDone chan bool
@@ -23,7 +22,6 @@ type Tunnel struct {
 //
 func NewUnbuffered() *Tunnel {
 	tn := &Tunnel{
-		mutex:       &sync.Mutex{},
 		coffee:      &sync.Once{},
 		closed:      &atomic.Value{},
 		closingDone: make(chan bool, 1),
@@ -37,7 +35,6 @@ func NewUnbuffered() *Tunnel {
 //
 func NewBuffered(buffer int) *Tunnel {
 	tn := &Tunnel{
-		mutex:       &sync.Mutex{},
 		coffee:      &sync.Once{},
 		closed:      &atomic.Value{},
 		closingDone: make(chan bool, 1),
@@ -70,10 +67,6 @@ func (self *Tunnel) Len() int {
 	return len(self.channel)
 }
 
-// Check if this Tunnel is fully closed.
-// Fully closed is defined by the closure of the underlying channel that
-// no future writing is possible.
-//
 func (self *Tunnel) IsClosed() bool {
 	if self.closed.Load() == true {
 		return true
@@ -81,33 +74,22 @@ func (self *Tunnel) IsClosed() bool {
 	return false
 }
 
-// Wait until this Tunnel is fully closed.
-// This method is blocking until no more goroutines are writing to this Tunnel.
-// After this method completes, IsClosed() will always return true.
+// Wait until closing process completes.
 //
 func (self *Tunnel) Wait() {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
-	if !self.IsClosed() {
-		<-self.closingDone
-		self.closed.Store(true)
-	}
+	<-self.closingDone
 }
 
-// Close this Tunnel.
-// Always Be Closing.
+// Close this Tunnel. Always Be Closing.
 //
 func (self *Tunnel) Close() {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
 	// coffee is for closers only.
 	go func() {
 		self.coffee.Do(func() {
 			self.semaphore.Close()
 			self.semaphore.Wait()
 			close(self.channel)
+			self.closed.Store(true)
 			self.closingDone <- true
 			close(self.closingDone)
 		})

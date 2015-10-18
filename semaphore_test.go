@@ -18,12 +18,12 @@ func TestSemaphore(t *testing.T) {
 	sm.Close()
 
 	// Only half remains in the buffer
-	assert.Equal(t, 5, sm.Count())
+	assert.Equal(t, 5, sm.count())
 	for i := 0; i < 5; i++ {
 		sm.Release()
 	}
 
-	assert.Equal(t, 10, sm.Count())
+	assert.Equal(t, 10, sm.count())
 	sm.Wait()
 }
 
@@ -38,7 +38,7 @@ func TestSemaphoreBufferOne(t *testing.T) {
 	assert.Equal(t, err, ErrClosedSemaphore)
 	sm.Release()
 	sm.Wait()
-	assert.Equal(t, 1, sm.Count())
+	assert.Equal(t, 1, sm.count())
 }
 
 func TestSemaphoreAcquiredAll(t *testing.T) {
@@ -86,5 +86,5 @@ func TestSemaphoreThreaded(t *testing.T) {
 	wg.Wait()
 	sm.Close()
 	sm.Wait()
-	assert.Equal(t, 10, sm.Count())
+	assert.Equal(t, 10, sm.count())
 }

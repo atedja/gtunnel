@@ -15,7 +15,7 @@ the only way to overcome that is to `recover()` which is Yuck™.
 Once closed, Tunnel will reject all new incoming data without panic, and 
 your reader can flush out the remaining data in the channel buffer and other 
 blocked goroutines are unblocked naturally. You can call `Wait()` to block 
-current execution thread until there is no more data in the channel.
+current execution thread until tunnel is fully closed.
 
 See Example below, or read the `tunnel_test.go` for extreme cases.
 
