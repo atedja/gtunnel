@@ -7,6 +7,26 @@ import (
 	"time"
 )
 
+func TestExample(t *testing.T) {
+	tn := NewUnbuffered()
+	for i := 0; i < 10; i++ {
+		go func() {
+			tn.Send("something")
+		}()
+	}
+
+	go func() {
+		for data := range tn.Out() {
+			assert.Equal(t, "something", data.(string))
+		}
+	}()
+
+	tn.Close()
+	tn.Wait()
+
+	return
+}
+
 func TestTunnelBasicCase(t *testing.T) {
 	fmt.Println("Testing basic case")
 	th := NewBuffered(4)
