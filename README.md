@@ -1,5 +1,7 @@
 # tunnel
 
+[![Build Status](https://travis-ci.org/atedja/go-tunnel.svg?branch=master)](https://travis-ci.org/atedja/go-tunnel)
+
 Tunnel is a clean and efficient wrapper around native Go channels that allows you to:
 * Close a channel multiple times without throwing a panic.
 * Detect if channel has been closed.
