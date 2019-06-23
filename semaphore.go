@@ -1,19 +1,3 @@
-/*
-Copyright 2015-2017 Albert Tedja
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package tunnel
 
 import (
@@ -22,14 +6,9 @@ import (
 
 // Simple Semaphore implementation with buffer and closer.
 // Acquire() is guaranteed to succeed as long as buffer is not empty.
-// If buffer is empty, Acquire() blocks until either a resource has been
-// released back or Semaphore is closed, which will return an error.
-// Closing a Semaphore does not guarantee future Acquire() calls to fail
-// immediately, as it depends on the size of the underlying buffer and the
-// thread scheduling.
-// However, once Close() returns, all future calls to Acquire() is guaranteed
-// to fail.
-//
+// If buffer is empty, Acquire() blocks until either a resource has been released back or Semaphore is closed, which will return an error.
+// Closing a Semaphore does not guarantee future Acquire() calls to fail immediately, as it depends on the size of the underlying buffer and the thread scheduling.
+// However, once Close() returns, all future calls to Acquire() is guaranteed to fail.
 type Semaphore struct {
 	sync.Mutex
 	cond       *sync.Cond
@@ -59,10 +38,7 @@ func NewSemaphore(bufferSize int) *Semaphore {
 
 // Non-blocking unless buffer is drained.
 // Returns error if buffer is drained and Semaphore has been closed.
-// If this function returns nil, it is guaranteed that thread has acquired
-// a resource, such that a call to Wait() will block until the resource is
-// released.
-//
+// If this function returns nil, it is guaranteed that thread has acquired a resource, such that a call to Wait() will block until the resource is released.
 func (self *Semaphore) Acquire() error {
 	if _, ok := <-self.buffer; !ok {
 		return ErrClosedSemaphore
@@ -72,7 +48,6 @@ func (self *Semaphore) Acquire() error {
 
 // Return resource back to Semaphore.
 // Do not call Release without calling Acquire first.
-//
 func (self *Semaphore) Release() {
 	self.Lock()
 	defer self.Unlock()
@@ -85,7 +60,6 @@ func (self *Semaphore) Release() {
 }
 
 // Count the number of reclaimed resources
-//
 func (self *Semaphore) count() int {
 	self.Lock()
 	defer self.Unlock()
@@ -93,7 +67,6 @@ func (self *Semaphore) count() int {
 }
 
 // Wait blocks until all resources are released back.
-//
 func (self *Semaphore) Wait() {
 	self.cond.L.Lock()
 	for self.count() < self.bufferSize {
@@ -103,9 +76,7 @@ func (self *Semaphore) Wait() {
 }
 
 // Close this Semaphore, and flush out all unused resources.
-// After this function returns, all future calls to Acquire is guaranteed to
-// fail.
-//
+// After this function returns, all future calls to Acquire is guaranteed to fail.
 func (self *Semaphore) Close() {
 	self.Lock()
 	defer self.Unlock()

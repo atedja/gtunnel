@@ -8,7 +8,7 @@ import (
 // Tunnel is a clean wrapper around native Go channel to allow cleanly closing the channel without throwing a panic.
 // When Tunnel is closed, it waits until all goroutines waiting to send data into the tunnel are unblocked.
 type Tunnel struct {
-	coffee      *sync.Once
+	once        *sync.Once
 	closed      *atomic.Value
 	closingDone chan bool
 	channel     chan interface{}
@@ -18,9 +18,9 @@ type Tunnel struct {
 // Creates a new Tunnel with no buffer.
 func NewUnbuffered() *Tunnel {
 	tn := &Tunnel{
-		coffee:      &sync.Once{},
+		once:        &sync.Once{},
 		closed:      &atomic.Value{},
-		closingDone: make(chan bool, 1),
+		closingDone: make(chan bool),
 		channel:     make(chan interface{}),
 		semaphore:   NewSemaphore(1),
 	}
@@ -30,9 +30,9 @@ func NewUnbuffered() *Tunnel {
 // Creates a new Tunnel with buffer.
 func NewBuffered(buffer int) *Tunnel {
 	tn := &Tunnel{
-		coffee:      &sync.Once{},
+		once:        &sync.Once{},
 		closed:      &atomic.Value{},
-		closingDone: make(chan bool, 1),
+		closingDone: make(chan bool),
 		channel:     make(chan interface{}, buffer),
 		semaphore:   NewSemaphore(buffer),
 	}
@@ -75,14 +75,12 @@ func (self *Tunnel) Wait() {
 
 // Close this Tunnel. Always Be Closing.
 func (self *Tunnel) Close() {
-	// coffee is for closers only.
 	go func() {
-		self.coffee.Do(func() {
+		self.once.Do(func() {
 			self.semaphore.Close()
 			self.semaphore.Wait()
 			close(self.channel)
 			self.closed.Store(true)
-			self.closingDone <- true
 			close(self.closingDone)
 		})
 	}()
