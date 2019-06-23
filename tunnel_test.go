@@ -87,11 +87,11 @@ func TestTunnelBufferOverflow(t *testing.T) {
 
 	th.Wait()
 	assert.Equal(t, true, th.IsClosed())
-	assert.Equal(t, 0, th.Len())
 
 	// Further attempt at reading will fail
 	_, ok := <-th.Out()
 	assert.Equal(t, false, ok)
+	assert.Equal(t, 0, th.Len())
 }
 
 func TestTunnelGoCrazyUnbuffered(t *testing.T) {
@@ -103,20 +103,21 @@ func TestTunnelGoCrazyUnbuffered(t *testing.T) {
 		for c := range th.Out() {
 			assert.Equal(t, "data", c.(string))
 		}
-		readerDone <- true
+		close(readerDone)
 	}()
 
 	// writer
 	writerDone := make(chan bool)
 	go func() {
-		for !th.IsClosed() {
-			th.Send("data")
+		var err error
+		for err == nil {
+			err = th.Send("data")
 		}
-		writerDone <- true
+		close(writerDone)
 	}()
 
 	// Wait to make reader and writer go crazy
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	th.Close()
 	th.Wait()
@@ -137,20 +138,21 @@ func TestTunnelGoCrazyBuffered(t *testing.T) {
 		for c := range th.Out() {
 			assert.Equal(t, "data", c.(string))
 		}
-		readerDone <- true
+		close(readerDone)
 	}()
 
 	// writer
 	writerDone := make(chan bool)
 	go func() {
-		for !th.IsClosed() {
-			th.Send("data")
+		var err error
+		for err == nil {
+			err = th.Send("data")
 		}
-		writerDone <- true
+		close(writerDone)
 	}()
 
 	// Wait to make reader and writer go crazy
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	th.Close()
 	th.Wait()
