@@ -1,6 +1,6 @@
 # tunnel
 
-[![Build Status](https://travis-ci.org/atedja/go-tunnel.svg?branch=master)](https://travis-ci.org/atedja/go-tunnel)
+[![GoDoc](https://godoc.org/github.com/atedja/gtunnel?status.svg)](https://godoc.org/github.com/atedja/gtunnel)[![Build Status](https://travis-ci.org/atedja/gtunnel.svg?branch=master)](https://travis-ci.org/atedja/gtunnel)
 
 Tunnel is a clean and efficient wrapper around native Go channels that allows you to:
 * Close a channel multiple times without throwing a panic.
@@ -13,7 +13,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/atedja/go-tunnel"
+	"github.com/atedja/gtunnel"
 )
 
 func main() {
@@ -71,5 +71,3 @@ Tunnels use `interface{}` internally, so you need to cast data back to its origi
 #### Check if tunnel is closed
 
     tn.IsClosed()
-
-#### [Full API Documentation](https://godoc.org/github.com/atedja/go-tunnel)
