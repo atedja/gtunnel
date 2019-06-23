@@ -17,7 +17,6 @@ limitations under the License.
 package tunnel
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -25,8 +24,6 @@ import (
 )
 
 func TestSemaphore(t *testing.T) {
-	fmt.Println("Testing Semaphore basic functions")
-
 	sm := NewSemaphore(10)
 	for i := 0; i < 5; i++ {
 		assert.Nil(t, sm.Acquire())
@@ -44,8 +41,6 @@ func TestSemaphore(t *testing.T) {
 }
 
 func TestSemaphoreBufferOne(t *testing.T) {
-	fmt.Println("Testing Semaphore of size one")
-
 	sm := NewSemaphore(1)
 	assert.Nil(t, sm.Acquire())
 	sm.Close()
@@ -58,8 +53,6 @@ func TestSemaphoreBufferOne(t *testing.T) {
 }
 
 func TestSemaphoreAcquiredAll(t *testing.T) {
-	fmt.Println("Testing Semaphore all resources are acquired")
-
 	sm := NewSemaphore(10)
 	for i := 0; i < 10; i++ {
 		assert.Nil(t, sm.Acquire())
@@ -78,8 +71,6 @@ func TestSemaphoreAcquiredAll(t *testing.T) {
 }
 
 func TestSemaphoreThreaded(t *testing.T) {
-	fmt.Println("Testing Semaphore in threaded situations")
-
 	// This test should take roughly 1 second because we have 10 resources
 	// in the semaphore, and 100 goroutines attempting to acquire those
 	// resources, and each goroutine takes 100 ms to complete.
