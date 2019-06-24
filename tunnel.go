@@ -42,46 +42,46 @@ func NewBuffered(buffer int) *Tunnel {
 // Sends data into this Tunnel.
 // Will yield error if channel is closed rather than panics.
 // You should always use this to send data to channel.
-func (self *Tunnel) Send(v interface{}) error {
-	if self.semaphore.Acquire() != nil {
+func (tun *Tunnel) Send(v interface{}) error {
+	if tun.semaphore.Acquire() != nil {
 		return ErrClosedTunnel
 	}
-	defer self.semaphore.Release()
+	defer tun.semaphore.Release()
 
-	self.channel <- v
+	tun.channel <- v
 
 	return nil
 }
 
-func (self *Tunnel) Out() <-chan interface{} {
-	return self.channel
+func (tun *Tunnel) Out() <-chan interface{} {
+	return tun.channel
 }
 
-func (self *Tunnel) Len() int {
-	return len(self.channel)
+func (tun *Tunnel) Len() int {
+	return len(tun.channel)
 }
 
-func (self *Tunnel) IsClosed() bool {
-	if self.closed.Load() == true {
+func (tun *Tunnel) IsClosed() bool {
+	if tun.closed.Load() == true {
 		return true
 	}
 	return false
 }
 
 // Wait until closing process completes.
-func (self *Tunnel) Wait() {
-	<-self.closingDone
+func (tun *Tunnel) Wait() {
+	<-tun.closingDone
 }
 
 // Close this Tunnel. Always Be Closing.
-func (self *Tunnel) Close() {
+func (tun *Tunnel) Close() {
 	go func() {
-		self.once.Do(func() {
-			self.semaphore.Close()
-			self.semaphore.Wait()
-			close(self.channel)
-			self.closed.Store(true)
-			close(self.closingDone)
+		tun.once.Do(func() {
+			tun.semaphore.Close()
+			tun.semaphore.Wait()
+			close(tun.channel)
+			tun.closed.Store(true)
+			close(tun.closingDone)
 		})
 	}()
 }

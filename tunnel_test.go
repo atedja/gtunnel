@@ -79,14 +79,18 @@ func TestTunnelBufferOverflow(t *testing.T) {
 	th.Close()
 
 	// Flush them out
+	readerDone := make(chan bool)
 	go func() {
 		for c := range th.Out() {
 			assert.Equal(t, 1, c.(int))
 		}
+		close(readerDone)
 	}()
 
 	th.Wait()
 	assert.Equal(t, true, th.IsClosed())
+
+	<-readerDone
 
 	// Further attempt at reading will fail
 	_, ok := <-th.Out()

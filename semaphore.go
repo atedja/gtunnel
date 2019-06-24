@@ -39,8 +39,8 @@ func NewSemaphore(bufferSize int) *Semaphore {
 // Non-blocking unless buffer is drained.
 // Returns error if buffer is drained and Semaphore has been closed.
 // If this function returns nil, it is guaranteed that thread has acquired a resource, such that a call to Wait() will block until the resource is released.
-func (self *Semaphore) Acquire() error {
-	if _, ok := <-self.buffer; !ok {
+func (sem *Semaphore) Acquire() error {
+	if _, ok := <-sem.buffer; !ok {
 		return ErrClosedSemaphore
 	}
 	return nil
@@ -48,41 +48,41 @@ func (self *Semaphore) Acquire() error {
 
 // Return resource back to Semaphore.
 // Do not call Release without calling Acquire first.
-func (self *Semaphore) Release() {
-	self.Lock()
-	defer self.Unlock()
-	if !self.closed {
-		self.buffer <- 1
+func (sem *Semaphore) Release() {
+	sem.Lock()
+	defer sem.Unlock()
+	if !sem.closed {
+		sem.buffer <- 1
 	} else {
-		self.returned++
-		self.cond.Signal()
+		sem.returned++
+		sem.cond.Signal()
 	}
 }
 
 // Count the number of reclaimed resources
-func (self *Semaphore) count() int {
-	self.Lock()
-	defer self.Unlock()
-	return self.notUsed + self.returned
+func (sem *Semaphore) count() int {
+	sem.Lock()
+	defer sem.Unlock()
+	return sem.notUsed + sem.returned
 }
 
 // Wait blocks until all resources are released back.
-func (self *Semaphore) Wait() {
-	self.cond.L.Lock()
-	for self.count() < self.bufferSize {
-		self.cond.Wait()
+func (sem *Semaphore) Wait() {
+	sem.cond.L.Lock()
+	for sem.count() < sem.bufferSize {
+		sem.cond.Wait()
 	}
-	self.cond.L.Unlock()
+	sem.cond.L.Unlock()
 }
 
 // Close this Semaphore, and flush out all unused resources.
 // After this function returns, all future calls to Acquire is guaranteed to fail.
-func (self *Semaphore) Close() {
-	self.Lock()
-	defer self.Unlock()
-	self.closed = true
-	close(self.buffer)
-	for range self.buffer {
-		self.notUsed++
+func (sem *Semaphore) Close() {
+	sem.Lock()
+	defer sem.Unlock()
+	sem.closed = true
+	close(sem.buffer)
+	for range sem.buffer {
+		sem.notUsed++
 	}
 }
