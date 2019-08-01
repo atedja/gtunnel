@@ -15,7 +15,7 @@ type Tunnel struct {
 	semaphore   *Semaphore
 }
 
-// Creates a new Tunnel with no buffer.
+// NewUnbuffered creates a new Tunnel with no buffer.
 func NewUnbuffered() *Tunnel {
 	tn := &Tunnel{
 		once:        &sync.Once{},
@@ -27,7 +27,7 @@ func NewUnbuffered() *Tunnel {
 	return tn
 }
 
-// Creates a new Tunnel with buffer.
+// NewBuffered creates a new Tunnel with buffer.
 func NewBuffered(buffer int) *Tunnel {
 	tn := &Tunnel{
 		once:        &sync.Once{},
@@ -73,7 +73,7 @@ func (tun *Tunnel) Wait() {
 	<-tun.closingDone
 }
 
-// Close this Tunnel. Always Be Closing.
+// Close this Tunnel.
 func (tun *Tunnel) Close() {
 	go func() {
 		tun.once.Do(func() {

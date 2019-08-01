@@ -4,5 +4,8 @@ import (
 	"errors"
 )
 
-var ErrClosedTunnel = errors.New("Tunnel is closed")
-var ErrClosedSemaphore = errors.New("Semaphore is closed")
+// ErrClosedTunnel is returned when tunnel is already closed.
+var ErrClosedTunnel = errors.New("gtunnel tunnel is closed")
+
+// ErrClosedSemaphore is returned when semaphore is already closed.
+var ErrClosedSemaphore = errors.New("gtunnel semaphore is closed")
